@@ -35,7 +35,7 @@ public class MeeshoDailyPL {
 
         List<ExcelRowData> excelRows = new ArrayList<>();
         Properties properties = new Properties();
-        try (FileInputStream fis = new FileInputStream("config.properties")) {
+        try (FileInputStream fis = new FileInputStream("src/main/resources/config.properties")) {
             properties.load(fis);
         } catch (IOException e) {
             e.printStackTrace();

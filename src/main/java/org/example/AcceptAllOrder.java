@@ -16,16 +16,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
+
 public class AcceptAllOrder {
 
     public static void main(String[] args) {
 
+
+
         Properties properties = new Properties();
-        try (FileInputStream fis = new FileInputStream("config.properties")) {
+        try (FileInputStream fis = new FileInputStream("src/main/resources/config.properties")) {
             properties.load(fis);
         } catch (IOException e) {
             e.printStackTrace();
         }
+
 
         List<Account> listOfAccount = new ArrayList<>();
         for (int i = 1; i <= 4; i++) {
