@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 public class MeeshoDailyPL {
     public static void main(String[] args) {
@@ -33,11 +34,18 @@ public class MeeshoDailyPL {
         LocalDate currentDate = LocalDate.now();
 
         List<ExcelRowData> excelRows = new ArrayList<>();
+        Properties properties = new Properties();
+        try (FileInputStream fis = new FileInputStream("config.properties")) {
+            properties.load(fis);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         List<Account> listOfAccount = new ArrayList<>();
-        listOfAccount.add(new Account("9716120863","@12Rajmahi","Flex Fit"));
-        listOfAccount.add(new Account("9873854930","Harish@28199","Glow FIt"));
-        listOfAccount.add(new Account("9873854936","Harish@28199","Fresh Fit"));
-        listOfAccount.add(new Account("9968817900","Sourabh@12","Spark"));
+        for (int i = 1; i <= 4; i++) {
+            String[] parts = properties.getProperty("account." + i).split(",");
+            listOfAccount.add(new Account(parts[0], parts[1], parts[2]));
+        }
 
         for (Account account: listOfAccount ) {
             String url = "https://supplier.meesho.com/panel/v3/new/root/login";
