@@ -2,6 +2,8 @@ package org.example;
 
 import org.example.meesho.Account;
 import org.example.meesho.ExcelRowData;
+import org.example.utils.UIHelper;
+import org.example.utils.Waits;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
@@ -19,7 +21,7 @@ import java.util.Properties;
 
 public class AcceptAllOrder {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 
 
 
@@ -42,7 +44,9 @@ public class AcceptAllOrder {
             String password = account.getPassword();
             WebDriver driver = new ChromeDriver();
             driver.manage().window().maximize();
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(2));
+            Waits wait = new Waits(driver);
+            UIHelper helper = new UIHelper(driver);
+
 
             By phoneNumberLocator = By.xpath("//input[@name='emailOrPhone']");
             By passwordLocator = By.xpath("//input[@name='password']");
@@ -116,32 +120,24 @@ public class AcceptAllOrder {
 
             driver.findElement(readyToShipLocator).click();
             System.out.println("Clicked on ready To ship");
-            driver.findElement(selectAllRowsLocator).click();
-            System.out.println("selected all rows");
-            driver.findElement(clickOnDownloadLabelLocator).click();
+            Thread.sleep(1000);
+            if (!driver.findElements(checkDownloadLabelStatusLocator).isEmpty()){
+                driver.findElement(clickOnDownloadLabelLocator).click();
+            }else{
+                driver.findElement(selectAllRowsLocator).click();
+                System.out.println("selected all rows");
+                driver.findElement(clickOnDownloadLabelLocator).click();
 
-            while (true) {
-                try {
+                while (true) {
                     Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                    List<WebElement> status = driver.findElements(checkDownloadLabelStatusLocator);
+                    if (!status.isEmpty()) break;
+                    System.out.println("waiting for Labels generated successfully..................");
                 }
-                List<WebElement> status = driver.findElements(checkDownloadLabelStatusLocator);
-                if (!status.isEmpty()) break;
-                System.out.println("waiting for Labels generated successfully..................");
-            }
-            try {
                 Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                driver.findElement(clickOnDownloadLabelLocator).click();
             }
-            driver.findElement(clickOnDownloadLabelLocator).click();
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-
+            Thread.sleep(4000);
             driver.quit();
         }
     }

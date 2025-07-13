@@ -6,6 +6,8 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.example.meesho.Account;
 import org.example.meesho.ExcelRowData;
+import org.example.utils.UIHelper;
+import org.example.utils.Waits;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -53,13 +55,21 @@ public class MeeshoDailyPL {
             String password = account.getPassword();
             WebDriver driver = new ChromeDriver();
             driver.manage().window().maximize();
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(2));
+            Waits wait = new Waits(driver);
+            UIHelper helper = new UIHelper(driver);
 
+
+//            Locators .....................
             By phoneNumberLocator = By.xpath("//input[@name='emailOrPhone']");
             By passwordLocator = By.xpath("//input[@name='password']");
             By loginLocator = By.xpath("//*[text()='Log in']");
             By orderLocator = By.xpath("//p[text()='Orders']");
             By readyToShipLocator = By.xpath("//button[starts-with(text(),'Ready to Ship')]");
+
+            By readyToDownloadFilter = By.xpath("//p[text()='Label downloaded']");
+            By yesLocator = By.xpath("//p[text()='Yes']");
+            By applyButtonLocator = By.xpath("//button//span[text()='Apply']");
+
             By subOrderIdLocator = By.xpath("./td[3]//p");
             By sukIdLocator = By.xpath("./td[4]//p");
             By quantityLocator = By.xpath("./td[6]//p");
@@ -68,8 +78,8 @@ public class MeeshoDailyPL {
             By modalLocator = By.xpath("//div[@role='dialog']");
 
             By closeModal = By.xpath("//*[local-name()='svg'][.//*[local-name()='path' and @d='M5.293 5.293a1 1 0 011.414 0L12 10.586l5.293-5.293a1 1 0 111.414 1.414L13.414 12l5.293 5.293a1 1 0 01-1.414 1.414L12 13.414l-5.293 5.293a1 1 0 01-1.414-1.414L10.586 12 5.293 6.707a1 1 0 010-1.414z']]");
-
-
+            By tableLocator = By.cssSelector(".MuiTableContainer-root");
+            By rowsLocator = By.cssSelector("tbody tr");
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5));
 
             driver.get(url);
@@ -87,52 +97,55 @@ public class MeeshoDailyPL {
 
             driver.findElement(readyToShipLocator).click();
 
-            JavascriptExecutor js = (JavascriptExecutor) driver;
+            helper.scrollAndClick(readyToDownloadFilter);
+            helper.scrollAndClick(yesLocator);
+            helper.scrollAndClick(applyButtonLocator);
 
-            // Locate your table
-            WebElement tableElement = driver.findElement(By.xpath("//div[@class='MuiTableContainer-root css-gxsp0q']")); // Adjust locator as needed
+
+            List<WebElement> listOfRows  = new ArrayList<>();
 
             int previousRowCount = 0;
+            boolean flag = false;
 
-            while (true) {
+            while (!flag) {
                 List<WebElement> rows = new ArrayList<>();
                 int attempts = 0;
                 while (attempts < 2) {
                     try {
-                        tableElement = driver.findElement(By.xpath("//div[@class='MuiTableContainer-root css-gxsp0q']"));
-                        rows = tableElement.findElements(By.tagName("tr"));
+                        wait.waitForLocatorToVisible(tableLocator);
+                        WebElement tableElement = driver.findElement(tableLocator);
+                        wait.waitForLocatorToVisible(rowsLocator);
+                        rows = tableElement.findElements(rowsLocator);
+                        helper.scrollToElement(rows.get(rows.size()-1));
                         break;  // Success, exit loop
                     } catch (StaleElementReferenceException e) {
                         System.out.println("exception occur but handled..");
                         attempts++;
+                    }catch (TimeoutException e){
+                        System.out.println(account.getName() + "=====>"+"No Order Present");
+                        flag = true;
+                        break;
                     }
                 }
-                js.executeScript("arguments[0].scrollTop = arguments[0].scrollHeight", tableElement);
-
-                // Wait for rows to load (adjust time as per your app's behavior)
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
 
-                // Check if new rows are loaded
-                rows = tableElement.findElements(By.tagName("tr"));
                 if (rows.size() == previousRowCount) {
-                    // No new rows loaded, exit loop
+                    listOfRows = rows;
                     break;
                 }
-
                 previousRowCount = rows.size();
             }
 
+            if (flag) continue;
 
-            List<WebElement> listOfRows = driver.findElements(By.xpath("//tbody/tr"));
             System.out.println("Size of Rows" + listOfRows.size());
 
             for (WebElement row : listOfRows) {
-                List<WebElement> check = row.findElements(By.xpath(".//p[text()='Downloaded']"));
-                if(check.isEmpty()) continue;
+                helper.scrollToElement(row);
                 String subOrderId = row.findElement(subOrderIdLocator).getText();
                 System.out.println(subOrderId);
                 String skuId = row.findElement(sukIdLocator).getText();
@@ -141,7 +154,6 @@ public class MeeshoDailyPL {
                 System.out.println(quantity);
                 String size = row.findElement(sizeLocator).getText();
                 System.out.println(size);
-
                 excelRows.add(new ExcelRowData(account.getName(),currentDate,subOrderId,skuId,quantity,size));
             }
             driver.quit();
