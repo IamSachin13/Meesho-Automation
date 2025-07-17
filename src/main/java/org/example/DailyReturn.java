@@ -6,6 +6,8 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.example.meesho.Account;
 import org.example.meesho.ExcelRowData;
+import org.example.utils.UIHelper;
+import org.example.utils.Waits;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.interactions.Actions;
@@ -79,6 +81,8 @@ public class DailyReturn {
 
 
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5));
+            Waits wait = new Waits(driver);
+            UIHelper helper = new UIHelper(driver);
 
             driver.get(url);
             Robot robot = new Robot();
@@ -103,79 +107,69 @@ public class DailyReturn {
             if (!driver.findElements(modalLocator).isEmpty()) {
                 driver.findElement(closeModal).click();
             }
-
-            driver.findElement(returnLocator).click();
+            helper.scrollAndClick(returnLocator);
 
             if (!driver.findElements(modalLocator).isEmpty()) {
                 driver.findElement(closeModal).click();
             }
 
 
+            helper.scrollAndClick(returnTarkingLocator);
 
-            driver.findElement(returnTarkingLocator).click();
+            helper.scrollAndClick(By.xpath("//button[text()='Disposed']"));
+            helper.scrollAndClick(By.xpath("//button[text()='In transit']"));
 
-
-            driver.findElement(By.xpath("//button[text()='Disposed']")).click();
-            driver.findElement(By.xpath("//button[text()='In transit']")).click();
-
-
-            driver.findElement(allFilterLocator).click();
-
-            driver.findElement(yesterdayLocator).click();
-
-            driver.findElement(applyLocator).click();
-
+            helper.scrollAndClick(allFilterLocator);
+            helper.scrollAndClick(yesterdayLocator);
+            helper.scrollAndClick(applyLocator);
 
             JavascriptExecutor js = (JavascriptExecutor) driver;
 
-            // Locate your table
-            WebElement tableElement = driver.findElement(By.cssSelector(".MuiTableContainer-root")); // Adjust locator as needed
+            By tableLocator = By.cssSelector(".MuiTableContainer-root");
+            By rowsLocator = By.cssSelector("tbody tr");
 
             int previousRowCount = 0;
+            boolean flag = false;
+            List<WebElement> listOfRows  = new ArrayList<>();
 
-            while (true) {
+            while (!flag) {
                 List<WebElement> rows = new ArrayList<>();
                 int attempts = 0;
                 while (attempts < 2) {
                     try {
-                        tableElement = driver.findElement(By.cssSelector(".MuiTableContainer-root"));
-                        rows = tableElement.findElements(By.tagName("tr"));
+                        wait.waitForLocatorToVisible(tableLocator);
+                        WebElement tableElement = driver.findElement(tableLocator);
+                        wait.waitForLocatorToVisible(rowsLocator);
+                        rows = tableElement.findElements(rowsLocator);
+                        helper.scrollToElement(rows.get(rows.size()-1));
                         break;  // Success, exit loop
                     } catch (StaleElementReferenceException e) {
                         System.out.println("exception occur but handled..");
                         attempts++;
+                    }catch (TimeoutException e){
+                        System.out.println(account.getName() + "=====>"+"No return Present");
+                        flag = true;
+                        break;
                     }
                 }
-                js.executeScript("arguments[0].scrollTop = arguments[0].scrollHeight", tableElement);
-
-                // Wait for rows to load (adjust time as per your app's behavior)
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
 
-                // Check if new rows are loaded
-                while (attempts < 2) {
-                    try {
-                        tableElement = driver.findElement(By.cssSelector(".MuiTableContainer-root"));
-                        rows = tableElement.findElements(By.tagName("tr"));
-                        break;  // Success, exit loop
-                    } catch (StaleElementReferenceException e) {
-                        System.out.println("exception occur but handled..");
-                        attempts++;
-                    }
-                }
                 if (rows.size() == previousRowCount) {
-                    // No new rows loaded, exit loop
+                    listOfRows = rows;
                     break;
                 }
-
                 previousRowCount = rows.size();
             }
 
+            if (flag){
+                driver.quit();
+                continue;
+            }
 
-            List<WebElement> listOfRows = driver.findElements(By.xpath("//tbody/tr"));
             System.out.println("Size of Rows" + listOfRows.size());
 
             for (WebElement row : listOfRows) {
